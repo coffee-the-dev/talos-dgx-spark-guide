@@ -1,0 +1,38 @@
+# LAN endpoint for the Sparks' LLM server (OpenAI-compatible API, no API key).
+# DNS: point llm.example.com at your Gateway.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: spark-llm
+  namespace: spark-llm
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: public
+      namespace: nginx-gateway
+      sectionName: http
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: public
+      namespace: nginx-gateway
+      sectionName: https
+  hostnames:
+    - llm.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.nginx.org
+            kind: SnippetsFilter
+            name: spark-llm-streaming
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: spark-llm
+          port: 8888
+          weight: 1

@@ -1,0 +1,23 @@
+# Exposes the DGX Spark ConnectX-7 RoCE devices (/dev/infiniband) as the
+# shared resource rdma/spark_roce. Talos's inbox mlx5 driver is enough.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rdma-devices
+  namespace: kube-system
+data:
+  config.json: |
+    {
+      "periodicUpdateInterval": 60,
+      "configList": [
+        {
+          "resourceName": "spark_roce",
+          "rdmaHcaMax": 1000,
+          "selectors": {
+            "vendors": ["15b3"],
+            "drivers": ["mlx5_core"],
+            "linkTypes": ["ether"]
+          }
+        }
+      ]
+    }

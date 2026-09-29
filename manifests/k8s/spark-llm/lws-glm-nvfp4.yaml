@@ -1,0 +1,200 @@
+# GLM-5.3-Flash NVFP4 on both DGX Sparks via mmastrac/glm-5.3-flash-4x-gx10
+# at TP=2 (vLLM nightly + mentat instead of Ray). Trial against the MiaAI EXL3
+# set in lws.yaml. Toggle with switch-model.sh; only one spark-llm* set may run.
+# replicas is owned by the switch script, not git (ignoreDifferences in app.yaml).
+#
+# Each pod runs the recipe's image (its own /entrypoint.sh) plus a mentatd
+# sidecar, the host-level daemon the recipe expects on every box. Roles are
+# fixed (HEAD_HOST + ROLE), and FABRIC_SUBNETS names both ConnectX roots, so
+# nothing depends on mentat's election or interface tags.
+#
+# experimental/ (arx, snapshot, adaptive-k, fp8, megamoe, fixes, sp,
+# recoverssm) is fetched at a pinned commit by an init container and mounted
+# file by file over the image, as the recipe's compose overrides do. The first
+# boot writes a ~48 GB processed-weight snapshot per node to the cache.
+apiVersion: leaderworkerset.x-k8s.io/v1
+kind: LeaderWorkerSet
+metadata:
+  name: spark-llm-mm
+  namespace: spark-llm
+spec:
+  replicas: 0
+  startupPolicy: LeaderCreated
+  leaderWorkerTemplate:
+    size: 2
+    restartPolicy: RecreateGroupOnPodRestart
+    leaderTemplate:
+      metadata:
+        labels:
+          app: spark-llm
+          role: leader
+        annotations:
+          spark-llm/model: glm-5.3-flash-nvfp4-mm
+      spec:
+        nodeSelector:
+          kubernetes.io/hostname: spark-0
+        tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        hostNetwork: true
+        hostIPC: true
+        dnsPolicy: ClusterFirstWithHostNet
+        imagePullSecrets:
+        - name: regcred
+        terminationGracePeriodSeconds: 60
+        initContainers:
+        - &wait
+          name: wait-model
+          image: alpine/git:v2.52.0
+          env:
+          - {name: CATALOG_REPO, value: nvidia/GLM-5.3-Flash-NVFP4}
+          command:
+          - sh
+          - -c
+          - 'until grep -A3 "\"repo\": \"$CATALOG_REPO\"" /models/catalog-status.json 2>/dev/null | grep -q "\"state\": \"ready\""; do echo "waiting for $CATALOG_REPO in model-sync"; sleep 60; done; echo "$CATALOG_REPO ready"'
+          volumeMounts:
+          - {name: models, mountPath: /models, readOnly: true}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 256Mi}
+        - &fetchexp
+          name: fetch-experimental
+          image: alpine/git:v2.52.0
+          env:
+          - {name: SHA, value: 22889933a45852da9e44e8811251e5636636accd}
+          command:
+          - sh
+          - -c
+          - 'set -e; git clone -q https://github.com/mmastrac/glm-5.3-flash-4x-gx10 /tmp/r; git -C /tmp/r checkout -q "$SHA"; cp -r /tmp/r/experimental/. /exp/; echo "experimental/ at $SHA"'
+          volumeMounts:
+          - {name: exp, mountPath: /exp}
+          resources:
+            requests: {cpu: 10m, memory: 64Mi}
+            limits: {memory: 512Mi}
+        - &mentatd
+          name: mentatd
+          image: mmastrac/mentatd:0.14.0
+          restartPolicy: Always
+          envFrom:
+          - configMapRef: {name: spark-llm-mm-mentatd}
+          env:
+          - {name: MENTAT_NODE_IP, value: 10.0.0.20}
+          - {name: MENTAT_PEERS, value: "10.0.0.21:6379"}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 512Mi}
+        containers:
+        - name: server
+          image: ghcr.io/<your-org>/glm53-mmastrac:6db84d4
+          envFrom:
+          - configMapRef: {name: spark-llm-mm-env}
+          env:
+          - {name: ROLE, value: head}
+          - {name: VLLM_HOST_IP, value: 10.0.0.20}
+          ports:
+          - {name: http, containerPort: 8888}
+          startupProbe:
+            httpGet: {path: /health, port: 8888}
+            periodSeconds: 20
+            failureThreshold: 270
+          readinessProbe:
+            httpGet: {path: /health, port: 8888}
+            periodSeconds: 10
+          securityContext:
+            capabilities:
+              add: [IPC_LOCK, SYS_NICE]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              rdma/spark_roce: 1
+          volumeMounts: &mounts
+          - {name: models, mountPath: /hf, readOnly: true}
+          - {name: cache, mountPath: /root/.cache, subPath: mm-cache}
+          - {name: logs, mountPath: /logs}
+          - {name: shm, mountPath: /dev/shm}
+          # experimental/ overrides: files replaced inside the image
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/distributed/device_communicators/arx.py, subPath: arx/arx.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/distributed/device_communicators/arx_vllm.cu, subPath: arx/arx_vllm.cu, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/distributed/device_communicators/arxbig.cu, subPath: arx/arxbig.cu, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/distributed/device_communicators/cuda_communicator.py, subPath: arx/cuda_communicator.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/model_executor/model_loader/weight_snapshot.py, subPath: snapshot/weight_snapshot.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/model_executor/model_loader/base_loader.py, subPath: snapshot/base_loader.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/quantization/modelopt.py, subPath: snapshot/modelopt.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/fused_moe/experts/flashinfer_cutlass_moe.py, subPath: snapshot/flashinfer_cutlass_moe.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/v1/core/sched/adaptive_k.py, subPath: adaptive-k/adaptive_k.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/model_executor/model_loader/dense_fp8.py, subPath: snapshot/dense_fp8.py, readOnly: true}
+          - {name: exp, mountPath: /opt/megamoe/megadense4.cu, subPath: megamoe/megadense4.cu, readOnly: true}
+          - {name: exp, mountPath: /opt/megamoe/megamoe_rm.cu, subPath: megamoe/megamoe_rm.cu, readOnly: true}
+          - {name: exp, mountPath: /opt/megamoe/moe_prefill.cu, subPath: megamoe/moe_prefill.cu, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/fused_moe/megamoe_vllm.py, subPath: megamoe/megamoe_vllm.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/flashinfer/mla/_batch_mla/_backends/_fa_common.py, subPath: fixes/_fa_common.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/models/glm5next/common/attention.py, subPath: fixes/attention.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/model_executor/kernels/mhc/tilelang_kernels.py, subPath: fixes/tilelang_kernels.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/v1/attention/backends/mla/flashinfer_mla_sparse_sm90.py, subPath: fixes/flashinfer_mla_sparse_sm90.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/v1/attention/backends/mla/gb10_sparse_mla.py, subPath: fixes/gb10_sparse_mla.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/v1/attention/backends/gdn_attn.py, subPath: fixes/gdn_attn.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/models/glm5next/common/kda.py, subPath: fixes/kda.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/mamba/ops/causal_conv1d.py, subPath: fixes/causal_conv1d.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/v1/core/kv_cache_utils.py, subPath: fixes/kv_cache_utils.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/v1/core/kv_cache_coordinator.py, subPath: fixes/kv_cache_coordinator.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/v1/kv_cache_interface.py, subPath: fixes/kv_cache_interface.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/v1/worker/utils.py, subPath: fixes/worker_utils.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/v1/worker/gpu/warmup.py, subPath: fixes/warmup.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/models/glm5next/common/model.py, subPath: fixes/model.py, readOnly: true}
+          - {name: exp, mountPath: /usr/local/lib/python3.12/dist-packages/vllm/models/glm5next/common/recoverssm.py, subPath: fixes/recoverssm.py, readOnly: true}
+        volumes: &vols
+        - name: models
+          hostPath: {path: /var/mnt/models, type: Directory}
+        - name: cache
+          hostPath: {path: /var/lib/spark-llm-cache, type: DirectoryOrCreate}
+        - name: logs
+          emptyDir: {}
+        - name: shm
+          emptyDir: {medium: Memory, sizeLimit: 32Gi}
+        - name: exp
+          emptyDir: {}
+    workerTemplate:
+      metadata:
+        labels:
+          app: spark-llm
+          role: worker
+        annotations:
+          spark-llm/model: glm-5.3-flash-nvfp4-mm
+      spec:
+        nodeSelector:
+          kubernetes.io/hostname: spark-1
+        tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        hostNetwork: true
+        hostIPC: true
+        dnsPolicy: ClusterFirstWithHostNet
+        imagePullSecrets:
+        - name: regcred
+        terminationGracePeriodSeconds: 60
+        initContainers:
+        - *wait
+        - *fetchexp
+        - <<: *mentatd
+          env:
+          - {name: MENTAT_NODE_IP, value: 10.0.0.21}
+          - {name: MENTAT_PEERS, value: "10.0.0.20:6379"}
+        containers:
+        - name: server
+          image: ghcr.io/<your-org>/glm53-mmastrac:6db84d4
+          envFrom:
+          - configMapRef: {name: spark-llm-mm-env}
+          env:
+          - {name: ROLE, value: worker}
+          - {name: VLLM_HOST_IP, value: 10.0.0.21}
+          securityContext:
+            capabilities:
+              add: [IPC_LOCK, SYS_NICE]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              rdma/spark_roce: 1
+          volumeMounts: *mounts
+        volumes: *vols

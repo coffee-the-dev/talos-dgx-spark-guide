@@ -1,0 +1,15 @@
+# DGX Spark (GB10, arm64) - DO NOT USE. Kept for the record only.
+# This image does not boot on GB10: the kernel hits an RCU stall on CPU 0
+# before the Talos API comes up (verified on spark-0, 2026-09-25).
+# Talos requires the proprietary driver on Grace Blackwell arm64. See
+# talos/schematics/dgx-spark-nonfree.yaml, which is the profile in use.
+# ConnectX-7 (mlx5) and RDMA modules ship in the base Talos kernel.
+# Do not add nvidia-gdrdrv-device or nvidia-fabricmanager: GPUDirect RDMA
+# is unsupported on GB10 and Spark has no NVSwitch.
+customization:
+  extraKernelArgs:
+    - arm64.nobti
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/nvidia-open-gpu-kernel-modules-lts
+      - siderolabs/nvidia-container-toolkit-lts

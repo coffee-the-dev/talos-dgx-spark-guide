@@ -1,0 +1,137 @@
+# Qwen3.8-Flash-Next on both DGX Sparks (LeaderWorkerSet, size 2).
+# Toggle with k8s/spark-llm/switch-model.sh; only one spark-llm* set may run.
+# replicas is owned by the switch script, not git (see ignoreDifferences in app.yaml).
+apiVersion: leaderworkerset.x-k8s.io/v1
+kind: LeaderWorkerSet
+metadata:
+  name: spark-llm-qwen
+  namespace: spark-llm
+spec:
+  replicas: 0
+  startupPolicy: LeaderCreated
+  leaderWorkerTemplate:
+    size: 2
+    restartPolicy: RecreateGroupOnPodRestart
+    leaderTemplate:
+      metadata:
+        labels:
+          app: spark-llm
+          role: leader
+        annotations:
+          spark-llm/model: qwen3.8-flash-next
+      spec:
+        nodeSelector:
+          kubernetes.io/hostname: spark-0
+        tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        hostNetwork: true
+        hostIPC: true
+        dnsPolicy: ClusterFirstWithHostNet
+        terminationGracePeriodSeconds: 60
+        initContainers:
+        - &wait
+          name: wait-model
+          image: alpine/git:v2.52.0
+          env:
+          - {name: CATALOG_REPO, value: nvidia/Qwen3.8-Flash-Next-NVFP4}
+          command:
+          - sh
+          - -c
+          - 'until grep -A3 "\"repo\": \"$CATALOG_REPO\"" /models/catalog-status.json 2>/dev/null | grep -q "\"state\": \"ready\""; do echo "waiting for $CATALOG_REPO in model-sync"; sleep 60; done; echo "$CATALOG_REPO ready"'
+          volumeMounts:
+          - {name: models, mountPath: /models, readOnly: true}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 256Mi}
+        - &fetch
+          name: fetch-recipe
+          image: alpine/git:v2.52.0
+          command: [sh, /scripts/fetch-recipe.sh]
+          volumeMounts:
+          - {name: recipe, mountPath: /recipe}
+          - {name: scripts, mountPath: /scripts}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 256Mi}
+        containers:
+        - name: server
+          image: vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
+          command: [bash, /scripts/entrypoint.sh, leader]
+          envFrom:
+          - configMapRef: {name: spark-llm-qwen-env}
+          env:
+          - {name: VLLM_HOST_IP, value: 10.100.0.10}
+          ports:
+          - {name: http, containerPort: 8888}
+          startupProbe:
+            httpGet: {path: /health, port: 8888}
+            periodSeconds: 20
+            failureThreshold: 180
+          readinessProbe:
+            httpGet: {path: /health, port: 8888}
+            periodSeconds: 10
+          securityContext:
+            capabilities:
+              add: [IPC_LOCK, SYS_NICE]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              rdma/spark_roce: 1
+          volumeMounts: &mounts
+          - {name: models, mountPath: /root/.cache/huggingface, readOnly: true}
+          - {name: cache, mountPath: /root/.cache/vllm, subPath: qwen-vllm}
+          - {name: cache, mountPath: /root/.nv/ComputeCache, subPath: qwen-nv}
+          - {name: recipe, mountPath: /recipe}
+          - {name: scripts, mountPath: /scripts}
+          - {name: shm, mountPath: /dev/shm}
+        volumes: &vols
+        - name: models
+          hostPath: {path: /var/mnt/models, type: Directory}
+        - name: cache
+          hostPath: {path: /var/lib/spark-llm-cache, type: DirectoryOrCreate}
+        - name: recipe
+          emptyDir: {}
+        - name: scripts
+          configMap: {name: spark-llm-qwen-scripts}
+        - name: shm
+          emptyDir: {medium: Memory, sizeLimit: 32Gi}
+    workerTemplate:
+      metadata:
+        labels:
+          app: spark-llm
+          role: worker
+        annotations:
+          spark-llm/model: qwen3.8-flash-next
+      spec:
+        nodeSelector:
+          kubernetes.io/hostname: spark-1
+        tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        hostNetwork: true
+        hostIPC: true
+        dnsPolicy: ClusterFirstWithHostNet
+        terminationGracePeriodSeconds: 60
+        initContainers:
+        - *wait
+        - *fetch
+        containers:
+        - name: server
+          image: vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
+          command: [bash, /scripts/entrypoint.sh, worker]
+          envFrom:
+          - configMapRef: {name: spark-llm-qwen-env}
+          env:
+          - {name: VLLM_HOST_IP, value: 10.100.0.11}
+          securityContext:
+            capabilities:
+              add: [IPC_LOCK, SYS_NICE]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              rdma/spark_roce: 1
+          volumeMounts: *mounts
+        volumes: *vols

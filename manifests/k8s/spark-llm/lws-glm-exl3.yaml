@@ -1,0 +1,221 @@
+# Multi-node LLM serving across both DGX Sparks (LeaderWorkerSet, size 2).
+# Model-neutral: the served model is chosen in kustomization.yaml by pointing
+# the configMapGenerator at a model dir (currently glm-5.3-flash/) and setting
+# the container image below. Leader = rank 0 + API :8888 on spark-0; worker =
+# rank 1 (--headless) on spark-1. NCCL runs RoCE v2 over CX7 rail A
+# (10.100.0.0/24). Weights mount read-only from the Talos models volume.
+# GPUs stay time-sliced (4 replicas/Spark); this uses 1 replica per node so
+# STT/TTS etc. can share the GB10. Keep the model's GPU memory fraction below 1.
+apiVersion: leaderworkerset.x-k8s.io/v1
+kind: LeaderWorkerSet
+metadata:
+  name: spark-llm
+  namespace: spark-llm
+spec:
+  replicas: 1
+  startupPolicy: LeaderCreated
+  leaderWorkerTemplate:
+    size: 2
+    restartPolicy: RecreateGroupOnPodRestart
+    leaderTemplate:
+      metadata:
+        labels:
+          app: spark-llm
+          role: leader
+        annotations:
+          spark-llm/model: glm-5.3-flash
+          # Bump to roll pods on configMap-only changes (no name hash).
+          spark-llm/config-rev: own-image-coop-seqs4-fp8all-kv11-kdabf16
+      spec:
+        nodeSelector:
+          kubernetes.io/hostname: spark-0
+        tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        hostNetwork: true
+        hostIPC: true
+        dnsPolicy: ClusterFirstWithHostNet
+        terminationGracePeriodSeconds: 60
+        imagePullSecrets:
+        - name: regcred
+        initContainers:
+        - &id001
+          name: wait-catalog
+          image: alpine/git:v2.52.0
+          command:
+          - sh
+          - -c
+          - 'until [ -f /models/catalog-status.json ] && grep -q ''"state": "ready"'' /models/catalog-status.json && ! grep -q ''"state": "error"'' /models/catalog-status.json; do echo waiting for model-sync;
+            sleep 60; done; echo catalog ready'
+          volumeMounts:
+          - name: models
+            mountPath: /models
+            readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 256Mi
+        - name: fetch-model-files
+          image: alpine/git:v2.52.0
+          command:
+          - sh
+          - /scripts/fetch-recipe.sh
+          volumeMounts:
+          - name: recipe
+            mountPath: /recipe
+          - name: scripts
+            mountPath: /scripts
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 256Mi
+        containers:
+        - name: server
+          image: ghcr.io/<your-org>/glm53-flash-sm121:943912c
+          command:
+          - bash
+          - /scripts/entrypoint.sh
+          - leader
+          envFrom:
+          - configMapRef:
+              name: spark-llm-env
+          env:
+          - name: VLLM_HOST_IP
+            value: 10.100.0.10
+          ports:
+          - name: http
+            containerPort: 8888
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8888
+            periodSeconds: 20
+            failureThreshold: 180
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8888
+            periodSeconds: 10
+          securityContext:
+            capabilities:
+              add:
+              - IPC_LOCK
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              rdma/spark_roce: 1
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                - bash
+                - /scripts/warmup.sh
+          volumeMounts: &id002
+          - name: models
+            mountPath: /root/.cache/huggingface
+            readOnly: true
+          - name: cache
+            mountPath: /root/.cache/vllm
+            subPath: vllm
+          - name: cache
+            mountPath: /root/.triton/cache
+            subPath: triton
+          - name: cache
+            mountPath: /root/.tilelang/cache
+            subPath: tilelang
+          - name: cache
+            mountPath: /root/.nv/ComputeCache
+            subPath: nv
+          - name: recipe
+            mountPath: /recipe
+          - name: scripts
+            mountPath: /scripts
+          - name: shm
+            mountPath: /dev/shm
+        volumes: &id003
+        - name: models
+          hostPath:
+            path: /var/mnt/models
+            type: Directory
+        - name: cache
+          hostPath:
+            path: /var/lib/spark-llm-cache
+            type: DirectoryOrCreate
+        - name: recipe
+          emptyDir: {}
+        - name: scripts
+          configMap:
+            name: spark-llm-scripts
+            defaultMode: 0755
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Gi
+    workerTemplate:
+      metadata:
+        labels:
+          app: spark-llm
+          role: worker
+        annotations:
+          spark-llm/model: glm-5.3-flash
+          # Bump to roll pods on configMap-only changes (no name hash).
+          spark-llm/config-rev: own-image-coop-seqs4-fp8all-kv11-kdabf16
+      spec:
+        nodeSelector:
+          kubernetes.io/hostname: spark-1
+        tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        hostNetwork: true
+        hostIPC: true
+        dnsPolicy: ClusterFirstWithHostNet
+        terminationGracePeriodSeconds: 60
+        imagePullSecrets:
+        - name: regcred
+        initContainers:
+        - *id001
+        - name: fetch-model-files
+          image: alpine/git:v2.52.0
+          command:
+          - sh
+          - /scripts/fetch-recipe.sh
+          volumeMounts:
+          - name: recipe
+            mountPath: /recipe
+          - name: scripts
+            mountPath: /scripts
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 256Mi
+        containers:
+        - name: server
+          image: ghcr.io/<your-org>/glm53-flash-sm121:943912c
+          command:
+          - bash
+          - /scripts/entrypoint.sh
+          - worker
+          envFrom:
+          - configMapRef:
+              name: spark-llm-env
+          env:
+          - name: VLLM_HOST_IP
+            value: 10.100.0.11
+          securityContext:
+            capabilities:
+              add:
+              - IPC_LOCK
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              rdma/spark_roce: 1
+          volumeMounts: *id002
+        volumes: *id003

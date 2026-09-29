@@ -1,0 +1,85 @@
+# Talos machine-config patch for a DGX Spark (GB10) worker.
+# Generate a normal worker config for your cluster first, then apply this on top:
+#   talosctl gen config <cluster> https://<endpoint>:6443   (or reuse your worker.yaml)
+#   talosctl apply-config -n <MAINT_IP> --insecure \
+#     --file worker.yaml \
+#     --config-patch @worker-dgx-spark.patch.yaml \
+#     --config-patch @patches/spark-0-fabric.yaml
+# Tested with Talos v1.14.1, Kubernetes v1.36.1.
+machine:
+  install:
+    # Verify in maintenance mode: `talosctl -n <MAINT_IP> --insecure get disks`.
+    # USB boot media usually shows as /dev/sda. Install overwrites this disk.
+    disk: /dev/nvme0n1
+    # Installer MUST come from the same Image Factory schematic as the ISO,
+    # or the installed system loses the NVIDIA extensions.
+    # This ID is the proprietary-driver schematic in schematics/dgx-spark-nonfree.yaml.
+    image: factory.talos.dev/metal-installer/bc668cd34c1b046652bf89b476b33178418e343d51d4e2e3e0b5335d4e40e7ad:v1.14.1
+    wipe: true            # the NVMe ships with DGX OS; a clean disk avoids stale partitions
+  kubelet:
+    extraMounts:          # lets hostPath pods see /var/mnt/<user volume>
+      - destination: /var/mnt
+        type: bind
+        source: /var/mnt
+        options: [bind, rshared, rw]
+  network:
+    interfaces:
+      # Pin the management NIC by driver. The onboard Realtek uses r8169;
+      # the four ConnectX-7 functions (mlx5_core) must not get node addressing.
+      - deviceSelector:
+          driver: r8169
+        dhcp: true
+  sysctls:
+    # GB10 GPU memory is host pages. Proactive compaction causes multi-second
+    # decode stalls under memory pressure.
+    vm.compaction_proactiveness: "0"
+    # Both ConnectX halves sit on the same QSFP L2 link. With default ARP, either
+    # NIC answers for both IPs and RoCE targets the wrong NIC (IBV_WC_RETRY_EXC_ERR).
+    net.ipv4.conf.all.arp_ignore: "1"
+    net.ipv4.conf.all.arp_announce: "2"
+  kernel:
+    modules:
+      - name: nvidia
+      - name: nvidia_uvm
+      - name: nvidia_modeset
+      - name: nvidia_drm
+        parameters: [modeset=1]
+      - name: ib_core
+      - name: ib_uverbs
+      - name: rdma_cm
+      - name: rdma_ucm     # creates /dev/infiniband/rdma_cm (RDMA device plugin + NCCL need it)
+      - name: ib_umad      # /dev/infiniband/umad* for ibstat / perftest
+      - name: mlx5_core
+      - name: mlx5_ib
+  nodeLabels:
+    accelerator: nvidia-gb10
+    node.kubernetes.io/instance-type: dgx-spark
+    hardware.nvidia.com/gb10: "true"
+    hardware.nvidia.com/rdma: "true"
+  # Keep general workloads off the Sparks. Note: a node that has already joined
+  # cannot change its own taints; set them with kubectl on existing nodes.
+  nodeTaints:
+    nvidia.com/gpu: present:NoSchedule
+---
+# Cap /var so model weights and caches cannot fill it.
+# Honored only when EPHEMERAL is first created. On an existing node run
+#   talosctl reset --system-labels-to-wipe EPHEMERAL --reboot --graceful=true
+apiVersion: v1alpha1
+kind: VolumeConfig
+name: EPHEMERAL
+provisioning:
+  maxSize: 500GiB
+---
+# Dedicated model volume, mounted at /var/mnt/models.
+# Fixed size so it cannot starve EPHEMERAL, whichever is provisioned first.
+# 500 GiB /var + 3 TiB models fits the 4 TB (3.7 TiB) NVMe.
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: models
+provisioning:
+  diskSelector:
+    match: system_disk
+  minSize: 3TiB
+  maxSize: 3TiB
+filesystem:
+  type: xfs

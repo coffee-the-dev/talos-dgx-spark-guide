@@ -1,0 +1,35 @@
+# GuideLLM v0.7.4 matrix, GLM-5.3-Flash NVFP4 TP=2 on 2x DGX Spark
+# nvfp4-final = first run of final config; nvfp4-postfix = same config after fabric ARP fix and driver-matched Talos on both nodes
+# columns: ttft p50/p95, session tok/s p50 (p5), aggregate output, aggregate total, e2e p50/p95, tokens per engine step
+nvfp4-final ctx=  1024 C1 n=4 err=0 ttft p50=0.69s p95=0.70s sess=37.3t/s(p5 37.1) agg_out=36.2 agg_tot=109 e2e p50=14.4 p95=14.5 tok/iter=2.39
+nvfp4-final ctx=  1024 C2 n=8 err=0 ttft p50=0.74s p95=1.12s sess=25.5t/s(p5 22.9) agg_out=47.5 agg_tot=144 e2e p50=20.8 p95=22.9 tok/iter=2.20
+nvfp4-final ctx=  1024 C4 n=16 err=0 ttft p50=0.88s p95=1.85s sess=15.7t/s(p5 15.0) agg_out=62.4 agg_tot=189 e2e p50=33.3 p95=35.3 tok/iter=2.29
+nvfp4-final ctx=  1024 C8 n=32 err=0 ttft p50=1.04s p95=3.00s sess=11.4t/s(p5 10.1) agg_out=86.6 agg_tot=262 e2e p50=46.2 p95=52.0 tok/iter=2.16
+nvfp4-final ctx=  8192 C1 n=4 err=0 ttft p50=3.11s p95=3.13s sess=39.5t/s(p5 38.9) agg_out=31.9 agg_tot=544 e2e p50=16.1 p95=16.2 tok/iter=2.51
+nvfp4-final ctx=  8192 C2 n=8 err=0 ttft p50=3.99s p95=6.77s sess=23.6t/s(p5 21.4) agg_out=39.0 agg_tot=664 e2e p50=25.8 p95=30.3 tok/iter=2.23
+nvfp4-final ctx=  8192 C4 n=16 err=0 ttft p50=4.10s p95=11.92s sess=13.6t/s(p5 10.6) agg_out=46.3 agg_tot=787 e2e p50=44.1 p95=52.3 tok/iter=2.16
+nvfp4-final ctx=  8192 C8 n=32 err=0 ttft p50=7.94s p95=22.39s sess=8.8t/s(p5 7.1) agg_out=59.9 agg_tot=1020 e2e p50=66.8 p95=84.2 tok/iter=2.22
+nvfp4-final ctx= 32768 C1 n=3 err=0 ttft p50=11.95s p95=12.04s sess=36.8t/s(p5 30.9) agg_out=19.2 agg_tot=1246 e2e p50=25.8 p95=28.5 tok/iter=2.19
+nvfp4-final ctx= 32768 C2 n=4 err=0 ttft p50=18.11s p95=24.13s sess=20.2t/s(p5 15.6) agg_out=22.6 agg_tot=1471 e2e p50=44.5 p95=56.0 tok/iter=2.30
+nvfp4-final ctx= 32768 C4 n=8 err=0 ttft p50=29.34s p95=44.32s sess=10.5t/s(p5 8.0) agg_out=25.8 agg_tot=1679 e2e p50=78.2 p95=103.5 tok/iter=2.19
+nvfp4-final ctx= 32768 C8 n=16 err=0 ttft p50=45.02s p95=89.01s sess=6.2t/s(p5 3.8) agg_out=29.1 agg_tot=1890 e2e p50=137.8 p95=213.7 tok/iter=2.20
+nvfp4-final ctx=131072 C1 n=2 err=0 ttft p50=48.72s p95=48.76s sess=31.3t/s(p5 30.7) agg_out=7.9 agg_tot=2023 e2e p50=65.0 p95=65.3 tok/iter=1.90
+nvfp4-final ctx=131072 C2 n=2 err=0 ttft p50=95.89s p95=97.65s sess=23.5t/s(p5 22.5) agg_out=8.6 agg_tot=2214 e2e p50=117.7 p95=118.5 tok/iter=2.14
+nvfp4-final ctx=131072 C4 n=4 err=0 ttft p50=158.71s p95=182.02s sess=8.8t/s(p5 7.7) agg_out=9.3 agg_tot=2398 e2e p50=217.2 p95=218.1 tok/iter=2.05
+nvfp4-final ctx=131072 C8 n=8 err=0 ttft p50=277.90s p95=366.99s sess=4.0t/s(p5 2.0) agg_out=9.7 agg_tot=2491 e2e p50=414.3 p95=418.9 tok/iter=2.15
+nvfp4-postfix ctx=  1024 C1 n=3 err=0 ttft p50=0.60s p95=0.64s sess=40.6t/s(p5 39.9) agg_out=39.4 agg_tot=119 e2e p50=13.2 p95=13.4 tok/iter=2.56
+nvfp4-postfix ctx=  1024 C2 n=8 err=0 ttft p50=0.74s p95=1.10s sess=27.1t/s(p5 22.9) agg_out=52.2 agg_tot=158 e2e p50=19.7 p95=23.4 tok/iter=2.42
+nvfp4-postfix ctx=  1024 C4 n=16 err=0 ttft p50=0.82s p95=1.86s sess=16.8t/s(p5 15.9) agg_out=64.5 agg_tot=195 e2e p50=31.3 p95=33.2 tok/iter=2.18
+nvfp4-postfix ctx=  1024 C8 n=32 err=0 ttft p50=1.22s p95=3.55s sess=11.5t/s(p5 10.4) agg_out=86.6 agg_tot=262 e2e p50=45.7 p95=51.5 tok/iter=2.24
+nvfp4-postfix ctx=  8192 C1 n=4 err=0 ttft p50=3.07s p95=3.07s sess=40.1t/s(p5 39.8) agg_out=32.6 agg_tot=555 e2e p50=15.8 p95=15.9 tok/iter=2.50
+nvfp4-postfix ctx=  8192 C2 n=8 err=0 ttft p50=3.96s p95=8.92s sess=24.1t/s(p5 21.8) agg_out=39.1 agg_tot=666 e2e p50=26.1 p95=29.6 tok/iter=2.25
+nvfp4-postfix ctx=  8192 C4 n=16 err=0 ttft p50=4.08s p95=11.99s sess=13.0t/s(p5 12.2) agg_out=46.4 agg_tot=789 e2e p50=44.4 p95=49.9 tok/iter=2.12
+nvfp4-postfix ctx=  8192 C8 n=32 err=0 ttft p50=6.45s p95=22.19s sess=8.8t/s(p5 7.2) agg_out=61.2 agg_tot=1043 e2e p50=66.1 p95=83.5 tok/iter=2.18
+nvfp4-postfix ctx= 32768 C1 n=3 err=0 ttft p50=11.96s p95=11.96s sess=39.0t/s(p5 38.7) agg_out=20.8 agg_tot=1352 e2e p50=25.0 p95=25.1 tok/iter=2.47
+nvfp4-postfix ctx= 32768 C2 n=4 err=0 ttft p50=22.53s p95=24.42s sess=24.7t/s(p5 23.6) agg_out=23.3 agg_tot=1514 e2e p50=43.4 p95=44.6 tok/iter=2.21
+nvfp4-postfix ctx= 32768 C4 n=8 err=0 ttft p50=29.27s p95=44.22s sess=12.5t/s(p5 7.8) agg_out=26.1 agg_tot=1694 e2e p50=76.8 p95=104.5 tok/iter=2.21
+nvfp4-postfix ctx= 32768 C8 n=16 err=0 ttft p50=42.67s p95=88.66s sess=5.9t/s(p5 4.2) agg_out=29.0 agg_tot=1887 e2e p50=134.1 p95=206.2 tok/iter=2.10
+nvfp4-postfix ctx=131072 C1 n=2 err=0 ttft p50=48.33s p95=48.38s sess=40.4t/s(p5 37.5) agg_out=8.4 agg_tot=2155 e2e p50=61.1 p95=62.0 tok/iter=2.52
+nvfp4-postfix ctx=131072 C2 n=2 err=0 ttft p50=95.29s p95=97.10s sess=24.4t/s(p5 21.3) agg_out=8.7 agg_tot=2238 e2e p50=116.7 p95=117.5 tok/iter=2.11
+nvfp4-postfix ctx=131072 C4 n=4 err=0 ttft p50=157.76s p95=181.37s sess=9.3t/s(p5 8.2) agg_out=9.5 agg_tot=2439 e2e p50=212.9 p95=214.3 tok/iter=2.23
+nvfp4-postfix ctx=131072 C8 n=8 err=0 ttft p50=278.62s p95=365.73s sess=4.0t/s(p5 2.0) agg_out=9.8 agg_tot=2507 e2e p50=413.0 p95=417.0 tok/iter=2.05

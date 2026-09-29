@@ -1,0 +1,19 @@
+# spark-1: ConnectX-7 Spark-to-Spark rail (direct QSFP). Static, jumbo, no routes.
+# Apply with: talosctl apply-config --file worker-dgx-spark.yaml --config-patch @patches/spark-1.yaml
+machine:
+  # Hold this Spark on a tested Talos version. tuppr uses this instead of the TalosUpgrade target.
+  # Raise it only after the new version's NVIDIA driver is tested on a Spark.
+  nodeAnnotations:
+    tuppr.home-operations.com/version: v1.14.1
+  network:
+    interfaces:
+      - deviceSelector:
+          permanentAddr: "<SPARK1_CX7_PORT_A_MAC>" # enp1s0f0np0 (mlx5 0000:01:00.0)
+        addresses:
+          - 10.100.0.11/24
+        mtu: 9000
+      - deviceSelector:
+          permanentAddr: "<SPARK1_CX7_PORT_B_MAC>" # enP2p1s0f0np0 (mlx5 0002:01:00.0)
+        addresses:
+          - 10.101.0.11/24
+        mtu: 9000

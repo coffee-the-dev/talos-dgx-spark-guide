@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: models
+resources:
+  - daemonset.yaml
+# Name hash changes on catalog edits, which rolls the DaemonSet and triggers a sync.
+configMapGenerator:
+  - name: model-catalog
+    files:
+      - catalog.yaml
+      - sync.py

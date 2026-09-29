@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spark-llm
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    # LWS webhook defaults spec fields; compare server-side to avoid false drift.
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
+spec:
+  project: ai-ops
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: spark-llm
+  source:
+    repoURL: https://github.com/<your-org>/<your-gitops-repo>
+    targetRevision: main
+    path: k8s/spark-llm
+  # switch-model.sh owns LWS replicas (toggle GLM <-> Qwen without a git push).
+  ignoreDifferences:
+    - group: leaderworkerset.x-k8s.io
+      kind: LeaderWorkerSet
+      jsonPointers: [/spec/replicas]
+  syncPolicy:
+    managedNamespaceMetadata:
+      labels:
+        kubernetes.io/metadata.name: spark-llm
+        # hostNetwork/hostIPC/hostPath for NCCL over CX7 + models volume
+        pod-security.kubernetes.io/enforce: privileged
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

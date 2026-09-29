@@ -1,0 +1,33 @@
+# EXL3 (MiaAI-Lab recipe, MAX_NUM_SEQS=8) vs NVFP4 (mmastrac recipe) on the same GuideLLM matrix
+ctx=  1024 C1  MIA: n=4 e=0 in=1036 out=512 ttft=1.21s sess=23.6 agg=22.2 tot=67 e2e=23.0 tpi=3.28
+              NOW: n=4 e=0 in=1036 out=512 ttft=0.69s sess=37.3 agg=36.2 tot=109 e2e=14.4 tpi=2.39
+ctx=  1024 C2  MIA: n=8 e=0 in=1036 out=512 ttft=1.72s sess=16.7 agg=30.9 tot=94 e2e=32.4 tpi=3.30
+              NOW: n=8 e=0 in=1036 out=512 ttft=0.74s sess=25.5 agg=47.5 tot=144 e2e=20.8 tpi=2.20
+ctx=  1024 C4  MIA: n=15 e=0 in=1036 out=512 ttft=2.11s sess=11.0 agg=39.8 tot=120 e2e=48.7 tpi=3.15
+              NOW: n=16 e=0 in=1036 out=512 ttft=0.88s sess=15.7 agg=62.4 tot=189 e2e=33.3 tpi=2.29
+ctx=  1024 C8  MIA: n=32 e=0 in=1036 out=512 ttft=3.30s sess=7.8 agg=52.7 tot=159 e2e=68.9 tpi=3.12
+              NOW: n=32 e=0 in=1036 out=512 ttft=1.04s sess=11.4 agg=86.6 tot=262 e2e=46.2 tpi=2.16
+ctx=  8192 C1  MIA: n=4 e=0 in=8204 out=512 ttft=5.88s sess=22.6 agg=17.7 tot=301 e2e=28.5 tpi=3.09
+              NOW: n=4 e=0 in=8204 out=512 ttft=3.11s sess=39.5 agg=31.9 tot=544 e2e=16.1 tpi=2.51
+ctx=  8192 C2  MIA: n=8 e=0 in=8204 out=512 ttft=12.44s sess=15.4 agg=22.1 tot=376 e2e=45.4 tpi=2.92
+              NOW: n=8 e=0 in=8204 out=512 ttft=3.99s sess=23.6 agg=39.0 tot=664 e2e=25.8 tpi=2.23
+ctx=  8192 C4  MIA: n=16 e=0 in=8204 out=512 ttft=29.87s sess=10.4 agg=24.7 tot=421 e2e=75.6 tpi=2.94
+              NOW: n=16 e=0 in=8204 out=512 ttft=4.10s sess=13.6 agg=46.3 tot=787 e2e=44.1 tpi=2.16
+ctx=  8192 C8  MIA: n=32 e=0 in=8204 out=512 ttft=82.57s sess=9.0 agg=27.9 tot=476 e2e=137.3 tpi=3.02
+              NOW: n=32 e=0 in=8204 out=512 ttft=7.94s sess=8.8 agg=59.9 tot=1020 e2e=66.8 tpi=2.22
+ctx= 32768 C1  MIA: n=3 e=0 in=32780 out=512 ttft=21.90s sess=20.7 agg=10.6 tot=692 e2e=46.5 tpi=2.75
+              NOW: n=3 e=0 in=32780 out=512 ttft=11.95s sess=36.8 agg=19.2 tot=1246 e2e=25.8 tpi=2.19
+ctx= 32768 C2  MIA: n=4 e=0 in=32780 out=512 ttft=53.03s sess=15.5 agg=11.2 tot=726 e2e=81.3 tpi=2.95
+              NOW: n=4 e=0 in=32780 out=512 ttft=18.11s sess=20.2 agg=22.6 tot=1471 e2e=44.5 tpi=2.30
+ctx= 32768 C4  MIA: n=8 e=0 in=32780 out=512 ttft=134.91s sess=15.3 agg=11.5 tot=746 e2e=168.6 tpi=2.99
+              NOW: n=8 e=0 in=32780 out=512 ttft=29.34s sess=10.5 agg=25.8 tot=1679 e2e=78.2 tpi=2.19
+ctx= 32768 C8  MIA: n=15 e=0 in=32780 out=512 ttft=309.28s sess=14.4 agg=10.9 tot=706 e2e=345.6 tpi=2.91
+              NOW: n=16 e=0 in=32780 out=512 ttft=45.02s sess=6.2 agg=29.1 tot=1890 e2e=137.8 tpi=2.20
+ctx=131072 C1  MIA: n=2 e=0 in=131084 out=512 ttft=87.71s sess=22.7 agg=4.6 tot=1193 e2e=110.3 tpi=3.15
+              NOW: n=2 e=0 in=131084 out=512 ttft=48.72s sess=31.3 agg=7.9 tot=2023 e2e=65.0 tpi=1.90
+ctx=131072 C2  MIA: n=2 e=0 in=131084 out=512 ttft=158.62s sess=18.6 agg=4.7 tot=1217 e2e=186.3 tpi=3.10
+              NOW: n=2 e=0 in=131084 out=512 ttft=95.89s sess=23.5 agg=8.6 tot=2214 e2e=117.7 tpi=2.14
+ctx=131072 C4  MIA: n=4 e=0 in=131084 out=512 ttft=299.44s sess=16.2 agg=4.8 tot=1227 e2e=333.1 tpi=3.04
+              NOW: n=4 e=0 in=131084 out=512 ttft=158.71s sess=8.8 agg=9.3 tot=2398 e2e=217.2 tpi=2.05
+ctx=131072 C8  MIA: n=8 e=0 in=131084 out=512 ttft=543.02s sess=16.6 agg=4.8 tot=1246 e2e=575.2 tpi=3.15
+              NOW: n=8 e=0 in=131084 out=512 ttft=277.90s sess=4.0 agg=9.7 tot=2491 e2e=414.3 tpi=2.15

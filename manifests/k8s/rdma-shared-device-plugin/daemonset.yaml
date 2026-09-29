@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: rdma-shared-device-plugin
+  namespace: kube-system
+  labels: {app: rdma-shared-device-plugin}
+spec:
+  selector:
+    matchLabels: {app: rdma-shared-device-plugin}
+  template:
+    metadata:
+      labels: {app: rdma-shared-device-plugin}
+    spec:
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      nodeSelector:
+        hardware.nvidia.com/rdma: "true"
+      tolerations:
+        - {key: nvidia.com/gpu, operator: Exists, effect: NoSchedule}
+      containers:
+        - name: rdma-shared-device-plugin
+          # v1.5.4 multi-arch (amd64/arm64)
+          image: ghcr.io/mellanox/k8s-rdma-shared-dev-plugin:v1.5.4@sha256:97e10cbcdba89f295152b4d55cb266078764aacb7180938c7f840fb3d712f875
+          args: ["-config-file=/k8s-rdma-shared-dev-plugin/config/config.json"]
+          securityContext:
+            privileged: true
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          volumeMounts:
+            - {name: device-plugin, mountPath: /var/lib/kubelet/device-plugins}
+            - {name: config, mountPath: /k8s-rdma-shared-dev-plugin/config, readOnly: true}
+            - {name: dev, mountPath: /dev}
+      volumes:
+        - name: device-plugin
+          hostPath: {path: /var/lib/kubelet/device-plugins}
+        - name: config
+          configMap: {name: rdma-devices}
+        - name: dev
+          hostPath: {path: /dev}

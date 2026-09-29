@@ -1,0 +1,20 @@
+# Scrape vLLM /metrics (TTFT, inter-token latency, e2e latency, queue, KV cache,
+# spec-decode acceptance). Only the leader runs the API server.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: spark-llm
+  namespace: spark-llm
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: spark-llm
+  namespaceSelector:
+    matchNames: [spark-llm]
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

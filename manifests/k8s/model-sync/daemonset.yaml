@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: model-sync
+  namespace: models
+  labels: {app: model-sync}
+spec:
+  selector:
+    matchLabels: {app: model-sync}
+  template:
+    metadata:
+      labels: {app: model-sync}
+    spec:
+      nodeSelector:
+        node.kubernetes.io/instance-type: dgx-spark
+      tolerations:
+        - {key: nvidia.com/gpu, operator: Exists, effect: NoSchedule}
+      containers:
+        - name: sync
+          image: python:3.12-slim
+          command: ["sh", "-c"]
+          args:
+            - pip install -q --no-cache-dir --root-user-action=ignore "huggingface_hub==0.36.0" "pyyaml==6.0.2" && exec python -u /etc/models/sync.py
+          env:
+            - {name: HF_HOME, value: /models}
+            # Stream one file at a time; native parallel download buffers are costly.
+            - {name: HF_HUB_DISABLE_XET, value: "1"}
+            - {name: HF_HUB_ENABLE_HF_TRANSFER, value: "0"}
+            - {name: MODEL_DOWNLOAD_WORKERS, value: "1"}
+            - {name: HF_HUB_DISABLE_TELEMETRY, value: "1"}
+            - name: NODE_NAME
+              valueFrom: {fieldRef: {fieldPath: spec.nodeName}}
+          resources:
+            requests: {cpu: 500m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          volumeMounts:
+            - {name: models, mountPath: /models}
+            - {name: catalog, mountPath: /etc/models, readOnly: true}
+      volumes:
+        - name: models
+          hostPath: {path: /var/mnt/models, type: Directory}
+        - name: catalog
+          configMap: {name: model-catalog}

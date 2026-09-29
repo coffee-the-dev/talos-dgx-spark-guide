@@ -1,0 +1,16 @@
+# Stream tokens as they are generated (SSE). nginx buffers upstream responses
+# by default, which held back whole replies. Long prefills (128k+) can also go
+# over nginx's 60 s default read timeout before the first byte.
+apiVersion: gateway.nginx.org/v1alpha1
+kind: SnippetsFilter
+metadata:
+  name: spark-llm-streaming
+  namespace: spark-llm
+spec:
+  snippets:
+    - context: http.server.location
+      value: |
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+        proxy_send_timeout 1h;

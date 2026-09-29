@@ -1,0 +1,8 @@
+# LeaderWorkerSet controller for multi-node inference on DGX Spark workers.
+# Chart default requests 1 CPU / 1Gi; the controller is idle until LWS objects exist.
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi

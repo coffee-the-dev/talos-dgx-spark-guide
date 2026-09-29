@@ -1,0 +1,13 @@
+# DGX Spark (GB10, arm64) - REQUIRED profile.
+# Talos documents that Grace Blackwell (GB10) arm64 needs the proprietary
+# NVIDIA driver; the open-modules image stalls the kernel during boot on
+# this hardware (verified on spark-0, 2026-09-25).
+# Proprietary 580 LTS kmod + container toolkit.
+# Schematic ID: bc668cd34c1b046652bf89b476b33178418e343d51d4e2e3e0b5335d4e40e7ad
+customization:
+  extraKernelArgs:
+    - arm64.nobti
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/nonfree-kmod-nvidia-lts
+      - siderolabs/nvidia-container-toolkit-lts

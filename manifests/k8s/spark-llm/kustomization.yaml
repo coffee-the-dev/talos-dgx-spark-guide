@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: spark-llm
+resources:
+  - lws-glm-exl3.yaml
+  - lws-glm-nvfp4.yaml
+  - lws-qwen.yaml
+  - service.yaml
+  - httproute.yaml
+  - snippetsfilter.yaml
+  - servicemonitor.yaml
+generatorOptions:
+  disableNameSuffixHash: true   # roll pods with the spark-llm/config-rev annotation
+configMapGenerator:
+  - name: spark-llm-env
+    envs: [glm-5.3-flash-exl3/model.env]
+  - name: spark-llm-scripts
+    files:
+      - glm-5.3-flash-exl3/head.sh
+      - glm-5.3-flash-exl3/worker.sh
+      - glm-5.3-flash-exl3/fetch-recipe.sh
+      - glm-5.3-flash-exl3/entrypoint.sh
+      - glm-5.3-flash-exl3/warmup.sh
+  - name: spark-llm-mm-env
+    envs: [glm-5.3-flash-nvfp4/model.env]
+  - name: spark-llm-mm-mentatd
+    envs: [glm-5.3-flash-nvfp4/mentatd.env]
+  - name: spark-llm-qwen-env
+    envs: [qwen3.8-flash-next/model.env]
+  - name: spark-llm-qwen-scripts
+    files:
+      - qwen3.8-flash-next/entrypoint.sh
+      - qwen3.8-flash-next/fetch-recipe.sh
+      # Add the reviewed myllmbox vLLM 0.30 patches here if you use MBX_PATCHES
+      # (03 rope clamp, 05 fused draft, 11 lm_head quant config, 18 NVFP4 PLE table,
+      # plus qsa_cache.py). They are not redistributed in this repo.

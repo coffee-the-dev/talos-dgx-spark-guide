@@ -1,0 +1,22 @@
+# Model catalog for the DGX Spark 'models' user volume (/var/mnt/models).
+# Independent of any serving deployment. The sync DaemonSet downloads every
+# entry into the Hugging Face cache layout under /var/mnt/models/hub.
+# It never deletes. To remove a model: drop it here, then delete it by hand.
+# Pin every revision to a commit SHA so deployments can mount a fixed path:
+#   /var/mnt/models/hub/models--<org>--<name>/snapshots/<revision>
+models:
+  - repo: Mia-AiLab/GLM-5.3-Flash-EXL3-TR3-4bpw
+    revision: 25a44fdbf16862a46b7cc9921142c6c81350af2f
+    notes: GLM-5.3-Flash EXL3 TR3 4bpw; MiaAI-Lab 2x DGX Spark recipe, ~176 GB
+  - repo: incoai/GLM-5.3-Flash-DFlash2
+    revision: dc77ff1c99eeb2df044ee3d4f0094eb033fee410
+    notes: DFlash2 speculative drafter for GLM-5.3-Flash (CC BY-NC-ND), ~2.3 GB
+  - repo: nvidia/GLM-5.3-Flash-NVFP4
+    revision: 09b04e5e74bca08ca8549fc736d4cdd8624bfde3
+    notes: GLM-5.3-Flash NVFP4 (NVIDIA); mmastrac glm-5.3-flash-4x-gx10 recipe at TP=2, ~190 GiB
+  - repo: nvidia/Qwen3.8-Flash-Next-NVFP4
+    revision: fc694b54fb0174e0913e6adf86691ef85a4ead47
+    notes: Qwen3.8-Flash-Next NVFP4 (NVIDIA); MiaAI-Lab Dual-DGX-Sparks recipe, v0.30 lane, ~124 GiB
+  - repo: myllmbox/Qwen3.8-Flash-Next-hibrid48
+    revision: e316057ddc794cbf76c3ef28bfd1c7b62b20128c
+    notes: Qwen3.8-Flash-Next hibrid48 (NVFP4 lm_head + NVFP4 PLE table); test vs NVIDIA NVFP4, ~98 GB

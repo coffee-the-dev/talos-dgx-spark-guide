@@ -1,0 +1,37 @@
+# NVIDIA GPU Operator values for Talos nodes (chart v26.7.x).
+# The NVIDIA driver and container toolkit come from Talos system extensions,
+# so the Operator must not install either one.
+nfd:
+  enabled: true
+psa:
+  enabled: true
+hostPaths:
+  driverInstallDir: /usr/local
+driver:
+  enabled: false        # driver is in the Talos image
+toolkit:
+  enabled: false        # nvidia-container-toolkit-lts extension provides it
+mig:
+  strategy: none        # GB10 has no MIG
+migManager:
+  enabled: false
+devicePlugin:
+  config:
+    create: true
+    name: gpu-sharing-config
+    default: time-slicing
+    data:
+      time-slicing: |-
+        version: v1
+        flags:
+          migStrategy: none
+        sharing:
+          timeSlicing:
+            renameByDefault: false
+            failRequestsGreaterThanOne: true
+            resources:
+              - name: nvidia.com/gpu
+                replicas: 4
+dcgmExporter:
+  serviceMonitor:
+    enabled: true
