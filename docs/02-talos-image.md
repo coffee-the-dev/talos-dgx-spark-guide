@@ -85,6 +85,10 @@ A Talos upgrade to the new schematic applies it. It needs one reboot per node.
 
 Stock DGX OS also sets `init_on_alloc=0`, `iommu.passthrough=0` and `initcall_blacklist=tegra234_cbb_init`. Talos already translates device DMA through the IOMMU, the same as DGX OS. We are testing `init_on_alloc=0`, `preempt=none`, `pci=pcie_bus_perf` and `pcie_aspm.policy=performance`; see [optimizations](09-optimizations.md).
 
+Do not set `iommu.passthrough=1`. On driver 580.178 the GB10 GPU then fails to start (`NVRM: RmInitAdapter failed! (0x62:0x1a:2631)`), and no GPU is available to Kubernetes.
+
+Tested with no measurable effect on RigMark or NCCL: `init_on_alloc=0`, `pcie_aspm.policy=performance` (ASPM is already disabled on every link), and `pci=pcie_bus_perf` (slightly slower). This Talos kernel does not recognize `preempt=none`.
+
 The NVIDIA Aerial (5G RAN) Spark guide adds real-time settings such as 1 GiB hugepages, `idle=poll`, `isolcpus` and `nohz_full`. They target radio timing, not LLM serving. The hugepages reserve 32 GiB of the unified memory that vLLM needs, so we did not use them.
 
 ## Firmware
