@@ -85,7 +85,7 @@ A Talos upgrade to the new schematic applies it. It needs one reboot per node.
 
 Stock DGX OS also sets `init_on_alloc=0`, `iommu.passthrough=0` and `initcall_blacklist=tegra234_cbb_init`. Talos already translates device DMA through the IOMMU, the same as DGX OS. We are testing `init_on_alloc=0`, `preempt=none`, `pci=pcie_bus_perf` and `pcie_aspm.policy=performance`; see [optimizations](09-optimizations.md).
 
-Do not set `iommu.passthrough=1`. It removes DMA isolation and gave no measurable gain. During that test the GB10 GPU failed to start (`RmInitAdapter failed! (0x62:0x1a:2631)`). The same error also appeared after a warm reboot without the flag, so the flag is not proven to cause it; see [troubleshooting](11-troubleshooting.md).
+Do not set `iommu.passthrough=1`. With it, the GB10 GPU fails to start (`NVRM: RmInitAdapter failed! (0x62:...:2631)`) even after two full power cycles, so the node has no GPU. Tested on driver 580.178.04. The same error can also follow warm (kexec) reboots without the flag; see [troubleshooting](11-troubleshooting.md).
 
 Tested with no measurable effect on RigMark or NCCL: `init_on_alloc=0`, `pcie_aspm.policy=performance` (ASPM is already disabled on every link), and `pci=pcie_bus_perf` (slightly slower). This Talos kernel does not recognize `preempt=none`. Turning off the scheduler features `WA_IDLE`, `WA_WEIGHT`, `CACHE_HOT_BUDDY`, `PICK_BUDDY` and `DELAY_DEQUEUE` (via `/sys/kernel/debug/sched/features`) also had no effect on decode. Repeat RigMark runs vary by about 1% on decode, so smaller differences are noise.
 
