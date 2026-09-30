@@ -28,6 +28,16 @@ ARP. Set `arp_ignore=1`, `arp_announce=2`. See [gotchas](10-talos-gotchas.md#two
 
 Read `NCCL_DEBUG=INFO`. Confirm `NET/IB` and the right HCA. If you see `NET/Socket`, NCCL fell back to TCP; check `NCCL_SOCKET_IFNAME`, `NCCL_IB_HCA`, `rdma/spark_roce` and `hostNetwork`.
 
+## GPU missing after reboot: `RmInitAdapter failed! (0x62:0x1a:2631)`
+
+After a normal Talos reboot or upgrade (kexec), the GB10 GPU can fail to start. `dmesg` repeats `NVRM: GPU 000f:01:00.0: RmInitAdapter failed! (0x62:0x1a:2631)`, and the node reports `nvidia.com/gpu: 0`. We saw it on both nodes after several warm reboots in a row. A full power cycle fixes it:
+
+```bash
+talosctl -n <node> reboot --mode powercycle
+```
+
+For upgrades, add `--reboot-mode powercycle` to `talosctl upgrade` to skip kexec.
+
 ## NCCL all-reduce is below ~180 Gb/s with both roots
 
 Check the PCIe Max Payload Size: `lspci -vvv -s 0000:01:00.0 | grep MaxPayload`. If the control line shows 128 bytes, add `pci=pcie_bus_safe` to the schematic and upgrade. See [image](02-talos-image.md#pcipcie_bus_safe-required-for-full-fabric-speed).

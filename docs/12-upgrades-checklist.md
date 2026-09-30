@@ -30,6 +30,8 @@ Keep `driver.enabled: false`. Compare toolkit and CDI defaults with the Talos in
 - Node advertises `nvidia.com/gpu` (4 with time-slicing) and `rdma/spark_roce`.
 - CUDA vector-add passes.
 - `ib_write_bw` host-memory test reaches about 97 Gb/s per function.
+- Upgrade with `--reboot-mode powercycle`. A kexec reboot can leave the GPU uninitialized.
+- `kubectl get node` shows `nvidia.com/gpu` above 0.
 - `/proc/cmdline` has `pci=pcie_bus_safe`, and `lspci` shows MaxPayload 512 bytes on the ConnectX-7 functions.
 - NCCL all-reduce with both roots reaches about 180 Gb/s or more at 256 MiB.
 - The LLM group starts with one rank per Spark, and the NCCL log shows the IB/RoCE transport.
