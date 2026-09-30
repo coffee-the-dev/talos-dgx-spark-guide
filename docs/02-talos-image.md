@@ -87,7 +87,7 @@ Stock DGX OS also sets `init_on_alloc=0`, `iommu.passthrough=0` and `initcall_bl
 
 Do not set `iommu.passthrough=1`. It removes DMA isolation and gave no measurable gain. During that test the GB10 GPU failed to start (`RmInitAdapter failed! (0x62:0x1a:2631)`). The same error also appeared after a warm reboot without the flag, so the flag is not proven to cause it; see [troubleshooting](11-troubleshooting.md).
 
-Tested with no measurable effect on RigMark or NCCL: `init_on_alloc=0`, `pcie_aspm.policy=performance` (ASPM is already disabled on every link), and `pci=pcie_bus_perf` (slightly slower). This Talos kernel does not recognize `preempt=none`.
+Tested with no measurable effect on RigMark or NCCL: `init_on_alloc=0`, `pcie_aspm.policy=performance` (ASPM is already disabled on every link), and `pci=pcie_bus_perf` (slightly slower). This Talos kernel does not recognize `preempt=none`. Turning off the scheduler features `WA_IDLE`, `WA_WEIGHT`, `CACHE_HOT_BUDDY`, `PICK_BUDDY` and `DELAY_DEQUEUE` (via `/sys/kernel/debug/sched/features`) also had no effect on decode. Repeat RigMark runs vary by about 1% on decode, so smaller differences are noise.
 
 The NVIDIA Aerial (5G RAN) Spark guide adds real-time settings such as 1 GiB hugepages, `idle=poll`, `isolcpus` and `nohz_full`. They target radio timing, not LLM serving. The hugepages reserve 32 GiB of the unified memory that vLLM needs, so we did not use them.
 
