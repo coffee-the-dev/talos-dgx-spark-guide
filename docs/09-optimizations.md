@@ -8,7 +8,8 @@ Every change was one git commit, one ConfigMap sync and one group restart, then 
 |---|---|---|
 | `vm.compaction_proactiveness=0` | No change on short runs. Recipe reports it removes 4-5 s stalls every ~37 s under memory pressure. | Yes |
 | `arp_ignore=1`, `arp_announce=2` | Fixed RoCE on the second ConnectX subnet. | Yes (required) |
-| `NCCL_MAX_NCHANNELS=4` (from 8) | Fabric 151 -> 162 Gb/s, prefill +2%. Decode unchanged. | Yes |
+| Kernel arg `pci=pcie_bus_safe` (DGX OS default) | PCIe MaxPayload 128 -> 512 B. NCCL all-reduce 131-163 -> 178-189 Gb/s. RigMark decode +5-8%, prefill +6%. | Yes (required) |
+| `NCCL_MAX_NCHANNELS=4` (from 8) | Fabric 151 -> 162 Gb/s, prefill +2%. Decode unchanged. Only helped because of the MaxPayload bug; after `pcie_bus_safe`, 8 channels is faster (178-189 vs 173-178 Gb/s). | No (after `pcie_bus_safe`) |
 | `NCCL_MAX_NCHANNELS=16` | Fabric 126 Gb/s, prefill -3%. | No |
 | CPU governor `performance` | Noise. | No |
 | GPU clock lock 3,003 MHz | Accepted, no effect. GB10 stays near 2.5 GHz under load. | No |
@@ -64,8 +65,8 @@ We did not run third-party binaries we could not review. One kit's single-node i
 
 - Per-step kernel cost matches the recipe authors' (GLM NVFP4: 31.5-32.4 ms step base vs 32.1 published). A MoE microbenchmark on our node matched the author's to within 5%.
 - Draft acceptance depends on the prompt. Our random-word matrix gives about 2.2 tokens/step; code prompts give 5+.
-- Fabric: 162 Gb/s vs about 190 expected. Affects prefill more than decode.
-- A full power drain (unplugged) has fixed a slow fabric for others. Not yet tested here.
+- Fabric: was 162 Gb/s vs about 190 expected. Cause: Talos boots without `pci=pcie_bus_safe`, so PCIe MaxPayload stayed at 128 B. Fixed; now 178-189 Gb/s.
+- After that fix, stock recipe settings trail the published TP=2 RigMark decode by 3.5-7%.
 
 ## Lessons
 

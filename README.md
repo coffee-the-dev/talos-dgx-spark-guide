@@ -6,7 +6,7 @@ This is a record of a real build. It covers what worked, what did not, the Talos
 
 ## Result in one paragraph
 
-Two Sparks run as ordinary Talos workers with the proprietary NVIDIA 580 LTS driver from an Image Factory schematic. The ConnectX-7 ports carry RoCE v2 at about 97 Gb/s per port (about 182 Gb/s with both). A LeaderWorkerSet places one vLLM rank on each Spark. GLM-5.3-Flash (NVFP4, TP=2, DFlash speculative decoding) serves at 37-40 tok/s single stream on random-word prompts, 65-99 tok/s on real code and structured prompts, and prefills about 2,700 tok/s at 32k context. Qwen3.8-Flash-Next reaches 90-95 tok/s on code prompts.
+Two Sparks run as ordinary Talos workers with the proprietary NVIDIA 580 LTS driver from an Image Factory schematic. The ConnectX-7 ports carry RoCE v2 at about 97 Gb/s per port (about 182 Gb/s with both). NCCL all-reduce reaches 178-189 Gb/s once the kernel argument `pci=pcie_bus_safe` is set (Talos omits it; DGX OS sets it). A LeaderWorkerSet places one vLLM rank on each Spark. GLM-5.3-Flash (NVFP4, TP=2, DFlash speculative decoding) serves at 37-40 tok/s single stream on random-word prompts, 65-99 tok/s on real code and structured prompts, and prefills about 2,700 tok/s at 32k context. Qwen3.8-Flash-Next reaches 90-95 tok/s on code prompts.
 
 ## Contents
 

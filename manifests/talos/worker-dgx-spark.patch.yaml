@@ -14,7 +14,7 @@ machine:
     # Installer MUST come from the same Image Factory schematic as the ISO,
     # or the installed system loses the NVIDIA extensions.
     # This ID is the proprietary-driver schematic in schematics/dgx-spark-nonfree.yaml.
-    image: factory.talos.dev/metal-installer/bc668cd34c1b046652bf89b476b33178418e343d51d4e2e3e0b5335d4e40e7ad:v1.14.1
+    image: factory.talos.dev/metal-installer/2c3e2f033ecf0565e7700c66011e47fc3f0c68a83b6b76afd5fb8d106e8fb052:v1.14.1
     wipe: true            # the NVMe ships with DGX OS; a clean disk avoids stale partitions
   kubelet:
     extraMounts:          # lets hostPath pods see /var/mnt/<user volume>

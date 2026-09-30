@@ -28,6 +28,10 @@ ARP. Set `arp_ignore=1`, `arp_announce=2`. See [gotchas](10-talos-gotchas.md#two
 
 Read `NCCL_DEBUG=INFO`. Confirm `NET/IB` and the right HCA. If you see `NET/Socket`, NCCL fell back to TCP; check `NCCL_SOCKET_IFNAME`, `NCCL_IB_HCA`, `rdma/spark_roce` and `hostNetwork`.
 
+## NCCL all-reduce is below ~180 Gb/s with both roots
+
+Check the PCIe Max Payload Size: `lspci -vvv -s 0000:01:00.0 | grep MaxPayload`. If the control line shows 128 bytes, add `pci=pcie_bus_safe` to the schematic and upgrade. See [image](02-talos-image.md#pcipcie_bus_safe-required-for-full-fabric-speed).
+
 ## Worker pod stays Pending
 
 - Is the node cordoned by an upgrade job?

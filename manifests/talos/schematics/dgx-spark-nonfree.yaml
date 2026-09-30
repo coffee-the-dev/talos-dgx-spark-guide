@@ -3,10 +3,14 @@
 # NVIDIA driver; the open-modules image stalls the kernel during boot on
 # this hardware (verified on spark-0, 2026-09-25).
 # Proprietary 580 LTS kmod + container toolkit.
-# Schematic ID: bc668cd34c1b046652bf89b476b33178418e343d51d4e2e3e0b5335d4e40e7ad
+# Schematic ID: 2c3e2f033ecf0565e7700c66011e47fc3f0c68a83b6b76afd5fb8d106e8fb052
 customization:
   extraKernelArgs:
     - arm64.nobti
+    # DGX OS sets this. Without it every PCIe device stays at MaxPayload
+    # 128 B (DGX OS: 512 B) and each ConnectX-7 root tops out near 96 Gb/s
+    # in NCCL all-reduce instead of ~110. See docs/02-talos-image.md.
+    - pci=pcie_bus_safe
   systemExtensions:
     officialExtensions:
       - siderolabs/nonfree-kmod-nvidia-lts

@@ -107,5 +107,5 @@ An agent harness with about 25k tokens of system prompt and tool schemas, pointe
 
 - GPU memory read: about 220-240 GB/s (80-88% of the 273 GB/s spec). This bounds decode, because MoE expert weights stream from memory every step.
 - GPU clocks under load: 2.5 GHz, 38-45 W, no throttle. Locking to 3,003 MHz is accepted but has no effect.
-- RoCE: 97.5 Gb/s per function, about 182 Gb/s both. NCCL all-reduce: 162 Gb/s at 4 channels.
+- RoCE: 97.5 Gb/s per function, about 182 Gb/s both. NCCL all-reduce: 162 Gb/s at 4 channels with the Talos default PCIe MaxPayload of 128 B; 178-189 Gb/s at 8 channels (about 111 per root) with `pci=pcie_bus_safe`.
 - A decode step at TP=2 (GLM NVFP4, one stream): MoE about 62% of kernel time, all-reduce about 11%, dense layers about 7%. The all-reduce cost is latency (about 100 us per 64 KB call), not bandwidth.
